@@ -4,182 +4,74 @@ import pandas as pd
 # --- CONFIGURATION ---
 st.set_page_config(page_title="Universal OP Architect", layout="wide")
 
-st.title("🏭 OP Architect : L'Outil de Décision Universel")
+st.title("🏭 OP Architect: Universal Decision Support Tool")
 st.markdown("""
-**Plateforme de dimensionnement et de choix technologique pour la valorisation des boues.**
-Intègre les logiques industrielles : *Zero Liquid Discharge (ZLD)*, *Waste-to-Energy*, et *Waste-to-Material*.
-*Basé sur les standards SSSP, Ankur et Janicki/Sedron.*
+**Strategic sizing and technology selection platform for sludge valorization.**
+Integrates industrial logic: *Zero Liquid Discharge (ZLD)*, *Waste-to-Energy*, and *Waste-to-Material*.
+*Based on SSSP, Ankur, and Janicki/Sedron standards.*
 """)
 
-# --- 1. BARRE LATÉRALE : LE GISEMENT ---
+# --- 1. SIDEBAR: FEEDSTOCK & STRATEGY ---
 with st.sidebar:
-    st.header("1. Dimensionnement (Gisement)")
+    st.header("1. Feedstock Sizing")
     
-    # VOLUME (Le facteur décisif selon le Survey Report)
-    vol_boue = st.number_input("Volume Journalier (m3/jour)", value=40.0, step=5.0)
+    # VOLUME (The deciding factor according to Survey Report)
+    vol_boue = st.number_input("Daily Volume (m³/day)", value=40.0, step=5.0)
     
-    # TYPE DE BOUE
-    type_boue = st.selectbox("Nature de la Boue", 
-                             ["Boue de Vidange (FSM)", "Boue Industrielle / Toxique", "Boue de STEP (Activée)"])
+    # SLUDGE TYPE
+    type_boue = st.selectbox("Sludge Nature", 
+                             ["Fecal Sludge (FSM)", "Industrial / Toxic Sludge", "Activated Sludge (WWTP)"])
     
-    # CONSISTANCE
+    # CONSISTENCY & LOGISTICS
     st.write("---")
-    mode_apport = st.radio("Logistique d'Entrée", ["Liquide (Camion Direct)", "Pâteuse/Solide (Déjà séchée)"])
+    mode_apport = st.radio("Logistics / Input Method", ["Liquid (Direct Truck Disposal)", "Pasty/Solid (Dried/Thickened)"])
     
-    if mode_apport == "Liquide (Camion Direct)":
-        ts_boue = st.slider("Taux de Solides (TS %)", 0.5, 10.0, 2.5, help="Boue liquide brute.")
+    if mode_apport == "Liquid (Direct Truck Disposal)":
+        ts_boue = st.slider("Total Solids (TS %)", 0.5, 10.0, 2.5, help="Raw liquid sludge from vacuum trucks.")
     else:
-        ts_boue = st.slider("Taux de Solides (TS %)", 15.0, 90.0, 30.0, help="Boue sortie de lits de séchage.")
+        ts_boue = st.slider("Total Solids (TS %)", 15.0, 90.0, 30.0, help="Sludge from drying beds or mechanical dewatering.")
 
-    # CO-SUBSTRATS
-    st.header("2. Co-Substrats")
-    ajout_msw = st.checkbox("Ajout Déchets Ménagers ?", value=False)
+    # CO-SUBSTRATES
+    st.header("2. Co-Substrates")
+    ajout_msw = st.checkbox("Add Municipal Solid Waste (MSW)?", value=False)
     if ajout_msw:
-        masse_msw = st.number_input("Masse Déchets (kg/jour)", value=2000.0)
+        masse_msw = st.number_input("Waste Mass (kg/day)", value=2000.0)
     else:
         masse_msw = 0
 
-    st.header("3. Objectifs Stratégiques")
-    cible = st.radio("Priorité du Projet", ["Rentabilité Énergétique (Élec)", "Zéro Rejet Liquide (ZLD)", "Matériaux (Pavés/Briques)"])
+    st.header("3. Strategic Goals")
+    cible = st.radio("Project Priority", ["Energy Profitability (Electricity)", "Zero Liquid Discharge (ZLD)", "Materials (Pavers/Bricks)"])
 
-# --- 2. MOTEUR D'INTELLIGENCE (Règles du Survey Report) ---
+# --- 2. INTELLIGENCE ENGINE (Survey Report Rules) ---
 
-def analyser_scenarios():
+def analyse_scenarios():
     recos = []
     
-    # MASSE SÈCHE TOTALE (Le vrai juge de paix)
+    # TOTAL DRY MASS (The real metric)
     ms_boue = (vol_boue * 1000) * (ts_boue/100)
-    ms_msw = masse_msw * 0.7 # Hypothèse 30% eau
+    ms_msw = masse_msw * 0.7 # Assumption 30% moisture in MSW
     ms_totale = ms_boue + ms_msw
     
-    # --- RÈGLE 1 : L'ÉCHELLE (SCALE) ---
+    # --- RULE 1: SCALE SEGMENTATION ---
     if vol_boue < 30:
-        segment = "PETIT VOLUME (<30m3)"
-        tech_base = "Pyrolyse / Ankur Small"
-        desc = "Solutions compactes. La valorisation énergétique est difficile. Priorité au traitement sanitaire."
+        segment = "SMALL SCALE (<30 m³)"
+        tech_base = "Pyrolysis / Ankur Small"
+        desc = "Compact solutions. Energy generation is challenging. Priority is sanitation and volume reduction."
     elif 30 <= vol_boue < 90:
-        segment = "VOLUME MOYEN (30-90m3)"
-        tech_base = "Modulaire / SSSP"
-        desc = "Zone idéale pour les solutions modulaires type SSSP. Valorisation mixte (Énergie ou Matériaux)."
+        segment = "MEDIUM SCALE (30-90 m³)"
+        tech_base = "Modular / SSSP"
+        desc = "Ideal zone for modular solutions (e.g., SSSP). Mixed valorization (Energy or Construction Materials)."
     else:
-        segment = "GRAND VOLUME (>90m3)"
-        tech_base = "Incinération / Janicki Large"
-        desc = "Économies d'échelle possibles. Production massive d'électricité ou d'eau distillée."
+        segment = "LARGE SCALE (>90 m³)"
+        tech_base = "Incineration / Janicki Large"
+        desc = "Heavy infrastructure. Economies of scale allow for massive electricity or distilled water production."
 
-    # --- RÈGLE 2 : LA TECHNOLOGIE ---
+    # --- RULE 2: TECHNOLOGY SCORING ---
     
-    # SCÉNARIO A : SSSP (THESVORES) - ZLD & Matériaux
-    # Fort si : Boue Industrielle OU Cible = Matériaux OU Cible = ZLD
+    # SCENARIO A: SSSP (THESVORES) - ZLD & Materials
+    # Strong if: Industrial Sludge OR Target = Materials OR Target = ZLD
     score_sssp = 5
-    if type_boue == "Boue Industrielle / Toxique": score_sssp += 5 # Bloque les métaux
-    if cible == "Matériaux (Pavés/Briques)": score_sssp += 5
-    if cible == "Zéro Rejet Liquide (ZLD)": score_sssp += 3
-    if 30 <= vol_boue < 100: score_sssp += 2 # Sweet spot SSSP
-    
-    recos.append({
-        "Tech": "SSSP (Technologie THESVORES)",
-        "Type": "Séchage Turbo + Vitrification",
-        "Score": score_sssp,
-        "Avantage": "🛡️ Zéro Rejet Liquide (ZLD) + Pavés Autobloquants. Idéal pour boues toxiques.",
-        "Produit": "Pavés / Briques",
-        "Rejet Liquide": "NON (Recyclé interne)"
-    })
-
-    # SCÉNARIO B : ANKUR / PYROLYSE - Mixte
-    # Fort si : Petit volume ET Ajout MSW (pour chauffer)
-    score_ankur = 5
-    if ajout_msw: score_ankur += 4 # Ankur aime le mélange
-    if mode_apport == "Liquide (Camion Direct)": score_ankur += 3 # Gère bien le liquide via presse
-    if vol_boue < 50: score_ankur += 2
-    
-    recos.append({
-        "Tech": "ANKUR SCIENTIFIC (Modèle Cox's Bazar)",
-        "Type": "Presse à Vis + Pyrolyse Hybride",
-        "Score": score_ankur,
-        "Avantage": "🔥 Robuste pour les entrants liquides grâce au co-traitement déchets.",
-        "Produit": "Électricité + Cendres",
-        "Rejet Liquide": "OUI (Filtrat de presse)"
-    })
-
-    # SCÉNARIO C : JANICKI / SEDRON - High Tech
-    # Fort si : Grand volume ET Besoin Eau
-    score_op = 5
-    if vol_boue > 80: score_op += 5
-    if ts_boue > 20: score_op += 3 # Préfère la boue sèche
-    if cible == "Zéro Rejet Liquide (ZLD)": score_op += 2 # Peut le faire par évaporation totale
-    
-    recos.append({
-        "Tech": "JANICKI / SEDRON (Omni Processor)",
-        "Type": "Combustion Vapeur / Incinération",
-        "Score": score_op,
-        "Avantage": "💧 Production massive d'eau distillée. Standard industriel.",
-        "Produit": "Eau Distillée + Élec",
-        "Rejet Liquide": "NON (Si évaporation totale)"
-    })
-
-    recos.sort(key=lambda x: x["Score"], reverse=True)
-    return segment, desc, recos, ms_totale
-
-# --- 3. AFFICHAGE DASHBOARD ---
-
-segment, desc, recos, ms_totale_jour = analyser_scenarios()
-best = recos[0]
-
-# BANNIÈRE DE RÉSULTAT
-st.header(f"🎯 Diagnostic : {segment}")
-st.info(desc)
-
-col1, col2 = st.columns([1, 2])
-
-with col1:
-    st.subheader("Meilleure Option")
-    st.success(f"🏆 **{best['Tech']}**")
-    st.metric("Score de Pertinence", f"{best['Score']}/15")
-    st.write(f"**Pourquoi ?** {best['Avantage']}")
-    st.write(f"**Sortie Principale :** {best['Produit']}")
-    
-    if best['Rejet Liquide'] == "NON (Recyclé interne)":
-        st.badge("ZLD - Zéro Rejet Liquide")
-
-with col2:
-    st.subheader("Comparatif Stratégique")
-    df_reco = pd.DataFrame(recos)
-    st.dataframe(df_reco[["Tech", "Avantage", "Produit", "Rejet Liquide"]], hide_index=True)
-
-st.markdown("---")
-
-# SIMULATION ÉCONOMIQUE (Basée sur le choix optimal)
-st.subheader(f"📊 Simulation Préliminaire ({best['Tech']})")
-
-c1, c2, c3 = st.columns(3)
-
-# 1. Bilan Matière
-c1.metric("Masse Sèche à Traiter", f"{int(ms_totale_jour)} kg/jour")
-
-# 2. Production (Selon la techno)
-if "SSSP" in best['Tech']:
-    # Modèle Matériaux (15% de cendres -> Pavés)
-    nb_paves = (ms_totale_jour * 0.15) * 2 # Ratio approx
-    c2.metric("Production Pavés", f"~{int(nb_paves)} unités/jour")
-    c3.metric("Revenu Est.", f"{int(nb_paves * 0.5)} $/jour", help="Base 0.5$ le pavé")
-    
-elif "JANICKI" in best['Tech']:
-    # Modèle Eau + Élec
-    eau_prod = (vol_boue*1000) * 0.8
-    c2.metric("Eau Distillée", f"~{int(eau_prod)} L/jour")
-    c3.metric("Revenu Est.", f"{int(eau_prod * 0.01)} $/jour", help="Vente eau uniquement")
-
-else: # ANKUR
-    # Modèle Élec
-    kwh_prod = (ms_totale_jour * 12 / 3.6) * 0.10 # Rendement global faible
-    c2.metric("Électricité Nette", f"~{int(kwh_prod)} kWh/jour")
-    c3.metric("Revenu Est.", f"{int(kwh_prod * 0.15)} $/jour")
-
-# SECTION ÉDUCATIVE (Survey Report)
-with st.expander("📚 Comprendre la Classification (Source : Technical Survey Report)"):
-    st.markdown("""
-    * **Petits Volumes (<30m3)** : La technologie dominante est la pyrolyse simplifiée. L'objectif est sanitaire avant d'être énergétique.
-    * **Volumes Moyens (30-90m3)** : C'est le domaine des solutions modulaires comme **SSSP**. Elles permettent une flexibilité (ajout de modules si la ville grandit).
-    * **Grands Volumes (>90m3)** : On entre dans le domaine de l'infrastructure lourde (Incinération). Rentable uniquement si le flux est constant.
-    * **Concept ZLD (Zero Liquid Discharge)** : Crucial pour SSSP. Toute l'eau extraite des boues est traitée et réutilisée dans l'usine (refroidissement, lavage), aucun tuyau ne sort vers la rivière.
-    """)
+    if type_boue == "Industrial / Toxic Sludge": score_sssp += 5 # Traps heavy metals
+    if cible == "Materials (Pavers/Bricks)": score_sssp += 5
+    if cible == "Zero Liquid Discharge (ZLD)": score_sssp += 3
+    if 30
