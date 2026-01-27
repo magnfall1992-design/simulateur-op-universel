@@ -15,7 +15,7 @@ Integrates industrial logic: *Zero Liquid Discharge (ZLD)*, *Waste-to-Energy*, a
 with st.sidebar:
     st.header("1. Feedstock Sizing")
     
-    # VOLUME (The deciding factor according to Survey Report)
+    # VOLUME
     vol_boue = st.number_input("Daily Volume (m3/day)", value=40.0, step=5.0)
     
     # SLUDGE TYPE
@@ -42,14 +42,14 @@ with st.sidebar:
     st.header("3. Strategic Goals")
     cible = st.radio("Project Priority", ["Energy Profitability (Electricity)", "Zero Liquid Discharge (ZLD)", "Materials (Pavers/Bricks)"])
 
-# --- 2. INTELLIGENCE ENGINE (Survey Report Rules) ---
+# --- 2. INTELLIGENCE ENGINE ---
 
 def analyse_scenarios():
     recos = []
     
-    # TOTAL DRY MASS (The real metric)
+    # TOTAL DRY MASS
     ms_boue = (vol_boue * 1000) * (ts_boue/100)
-    ms_msw = masse_msw * 0.7 # Assumption 30% moisture in MSW
+    ms_msw = masse_msw * 0.7 
     ms_totale = ms_boue + ms_msw
     
     # --- RULE 1: SCALE SEGMENTATION ---
@@ -68,19 +68,16 @@ def analyse_scenarios():
 
     # --- RULE 2: TECHNOLOGY SCORING ---
     
-    # SCENARIO A: SSSP (THESVORES) - ZLD & Materials
-    # Strong if: Industrial Sludge OR Target = Materials OR Target = ZLD
+    # SCENARIO A: SSSP (THESVORES)
     score_sssp = 5
     if type_boue == "Industrial / Toxic Sludge": 
-        score_sssp += 5 # Traps heavy metals
+        score_sssp += 5
     if cible == "Materials (Pavers/Bricks)": 
         score_sssp += 5
     if cible == "Zero Liquid Discharge (ZLD)": 
         score_sssp += 3
-        
-    # Correction de la ligne qui posait probleme (Logic simplified)
-    if vol_boue >= 30 and vol_boue < 100: 
-        score_sssp += 2 # SSSP Sweet spot
+    if 30 <= vol_boue < 100: 
+        score_sssp += 2
     
     recos.append({
         "Tech": "SSSP (THESVORES Tech)",
@@ -91,13 +88,12 @@ def analyse_scenarios():
         "Liquid Discharge": "NONE (Internal Recycle)"
     })
 
-    # SCENARIO B: ANKUR / PYROLYSIS - Hybrid
-    # Strong if: Small volume AND MSW added (for heat) AND Liquid input
+    # SCENARIO B: ANKUR / PYROLYSIS
     score_ankur = 5
     if ajout_msw: 
-        score_ankur += 4 # Ankur thrives on co-processing
+        score_ankur += 4
     if mode_apport == "Liquid (Direct Truck Disposal)": 
-        score_ankur += 3 # Handles liquid well via screw press
+        score_ankur += 3
     if vol_boue < 50: 
         score_ankur += 2
     
@@ -110,15 +106,14 @@ def analyse_scenarios():
         "Liquid Discharge": "YES (Press Filtrate)"
     })
 
-    # SCENARIO C: JANICKI / SEDRON - High Tech
-    # Strong if: Large volume AND Water need
+    # SCENARIO C: JANICKI / SEDRON
     score_op = 5
     if vol_boue > 80: 
         score_op += 5
     if ts_boue > 20: 
-        score_op += 3 # Prefers drier sludge
+        score_op += 3
     if cible == "Zero Liquid Discharge (ZLD)": 
-        score_op += 2 # Can achieve ZLD via total evaporation
+        score_op += 2
     
     recos.append({
         "Tech": "JANICKI / SEDRON (Omni Processor)",
@@ -134,42 +129,4 @@ def analyse_scenarios():
 
 # --- 3. DASHBOARD DISPLAY ---
 
-segment, desc, recos, ms_totale_jour = analyse_scenarios()
-best = recos[0]
-
-# RESULT BANNER
-st.header(f"🎯 Diagnostic: {segment}")
-st.info(desc)
-
-col1, col2 = st.columns([1, 2])
-
-with col1:
-    st.subheader("Recommended Option")
-    st.success(f"🏆 **{best['Tech']}**")
-    st.metric("Relevance Score", f"{best['Score']}/15")
-    st.write(f"**Why?** {best['Advantage']}")
-    st.write(f"**Primary Output:** {best['Output']}")
-    
-    if best['Liquid Discharge'] == "NONE (Internal Recycle)":
-        st.caption("✅ **ZLD Certified (Zero Liquid Discharge)**")
-    elif best['Liquid Discharge'] == "YES (Press Filtrate)":
-        st.warning("⚠️ **Requires Filtrate Management** (Sewer/Lagoon)")
-
-with col2:
-    st.subheader("Strategic Comparison")
-    df_reco = pd.DataFrame(recos)
-    st.dataframe(df_reco[["Tech", "Advantage", "Output", "Liquid Discharge"]], hide_index=True)
-
-st.markdown("---")
-
-# ECONOMIC SIMULATION (Based on optimal choice)
-st.subheader(f"📊 Preliminary Simulation ({best['Tech']})")
-
-c1, c2, c3 = st.columns(3)
-
-# 1. Mass Balance
-c1.metric("Dry Mass to Treat", f"{int(ms_totale_jour)} kg/day")
-
-# 2. Production (Tech specific)
-if "SSSP" in best['Tech']:
-    #
+segment, desc, recos, ms_totale
