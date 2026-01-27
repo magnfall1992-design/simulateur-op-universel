@@ -68,15 +68,4 @@ def analyse_scenarios():
 
     # --- RULE 2: TECHNOLOGY SCORING ---
     
-    # SCENARIO A: SSSP (THESVORES)
-    score_sssp = 5
-    if type_boue == "Industrial / Toxic Sludge": 
-        score_sssp += 5
-    if cible == "Materials (Pavers/Bricks)": 
-        score_sssp += 5
-    if cible == "Zero Liquid Discharge (ZLD)": 
-        score_sssp += 3
-    if 30 <= vol_boue < 100: 
-        score_sssp += 2
-    
-    recos.append({
+    # SCENARIO A:
