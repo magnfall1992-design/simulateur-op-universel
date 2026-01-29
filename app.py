@@ -1,51 +1,105 @@
 import streamlit as st
 import pandas as pd
 
-# --- 0. CONFIGURATION ---
-st.set_page_config(page_title="Universal OP Architect", layout="wide")
+# --- 0. CONFIGURATION ET STYLE ---
+st.set_page_config(
+    page_title="OP Architect V3",
+    page_icon="🏭",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-st.title("🏭 OP Architect: Advanced Decision Support")
+# CSS pour améliorer l'affichage sur mobile (centrage des titres, padding)
 st.markdown("""
-**Comprehensive Tool for Fecal Sludge Valorization.**
-*Covers: SSSP (Materials/ZLD), Ankur (Hybrid Energy), Janicki (Incineration).*
-""")
+<style>
+    .main > div {padding-top: 2rem;}
+    .stTabs [data-baseweb="tab-list"] {gap: 2px;}
+    .stTabs [data-baseweb="tab"] {height: 50px; white-space: pre-wrap;}
+</style>
+""", unsafe_allow_html=True)
 
-# --- 1. SIDEBAR: INPUTS ---
+# --- 1. GUIDE UTILISATEUR (Visible sur mobile et desktop) ---
+with st.expander("ℹ️ **GUIDE DE DÉMARRAGE : Comment utiliser cet outil ?**", expanded=True):
+    st.markdown("""
+    1. **Ouvrez le menu à gauche** (sur mobile, cliquez sur la flèche `>`).
+    2. **Remplissez les sections** dans l'ordre : Qualité des boues, Infrastructure, puis Finance.
+    3. **L'outil calcule automatiquement** la meilleure solution entre :
+       * *Ankur* (Énergie), *SSP/Thesvores* (Matériaux), ou *Incinérateur* (Traitement de masse).
+    4. **Naviguez dans les onglets ci-dessous** pour voir les résultats financiers et techniques.
+    """)
+
+# --- 2. SIDEBAR: INPUTS (AVEC AIDES EXPLICITES) ---
 with st.sidebar:
-    st.header("1. Feedstock & Logistics")
-    vol_boue = st.number_input("Daily Volume (m3/day)", value=40.0, step=5.0)
-    humidite = st.slider("Moisture Content (%)", 30, 99, 95)
-    type_boue = st.selectbox("Sludge Type", 
-                             ["Fecal Sludge (Domestic)", "Industrial / Toxic Sludge", "WWTP Activated Sludge"])
+    st.title("🎛️ Paramètres du Projet")
+    st.info("👈 Commencez par régler ces curseurs pour définir votre scénario.")
+
+    # --- SECTION A: QUALITÉ ---
+    st.header("1. Caractérisation de la Boue")
     
-    st.write("---")
-    st.header("2. Co-Substrates")
-    ajout_msw = st.checkbox("Enable MSW Co-processing?", value=False)
-    if ajout_msw:
-        masse_msw = st.number_input("Solid Waste Mass (kg/day)", value=2000.0)
-        hum_msw = st.slider("Waste Moisture (%)", 0, 60, 20)
-        lhv_msw = st.number_input("Waste LHV (MJ/kg)", value=18.0)
-    else:
-        masse_msw = 0
-        hum_msw = 0
-        lhv_msw = 0
+    type_boue = st.selectbox(
+        "Quel type de boue ?", 
+        ["Boues de Vidange (Domestique)", "Boues Activées (STEP)", "Boues Industrielles"],
+        help="Le type de boue influence le pouvoir calorifique et le choix de l'incinérateur."
+    )
+
+    ts_percent = st.slider(
+        "Taux de Siccité (TS) %", 
+        min_value=1.0, max_value=90.0, value=5.0, step=0.5,
+        help="C'est la concentration en matière solide.\n- 1-5% : Boue liquide (camion hydrocureur)\n- 20-30% : Boue pâteuse (sortie de filtre)\n- 80%+ : Boue séchée"
+    )
+    
+    heavy_metals = st.toggle(
+        "Présence de Métaux Lourds ?", 
+        value=False,
+        help="Activez ceci si des industries rejettent dans le réseau. Cela bloque certaines valorisations (briques SSP)."
+    )
+
+    vol_boue = st.number_input(
+        "Volume à traiter (m³/jour)", 
+        value=40.0, step=5.0,
+        help="Volume total entrant dans l'usine chaque jour."
+    )
 
     st.write("---")
-    st.header("3. Financials")
-    tipping_fee = st.number_input("Tipping Fee ($/m3)", value=0.50)
-    prix_elec = st.number_input("Elec Price ($/kWh)", value=0.15)
-    prix_pave = st.number_input("Paver Price ($/unit)", value=0.60)
-    capex_manual = st.number_input("Custom CAPEX ($)", value=0)
 
-    st.header("4. Strategy")
-    cible = st.radio("Priority", ["Energy Profitability", "Zero Liquid Discharge (ZLD)", "Materials (Construction)"])
+    # --- SECTION B: LOGISTIQUE (CŒUR DE LA LOGIQUE) ---
+    st.header("2. Infrastructure & Logistique")
+    
+    mode_collecte = st.radio(
+        "Comment les boues arrivent-elles ?", 
+        ["Camions / Apport Volontaire", "Réseau d'Égout (Direct)"],
+        help="Si 'Réseau', la boue arrive en continu. Si 'Camions', elle arrive par lots."
+    )
+    
+    has_station = st.radio(
+        "Y a-t-il DÉJÀ une station de traitement ?",
+        ["Non (Terrain nu)", "Oui (Station existante)"],
+        help="Si 'Oui', nous proposons des modules complémentaires (Ankur Basique). Si 'Non', nous proposons une solution complète (Ankur Intégré)."
+    )
+    is_station_existante = True if has_station == "Oui (Station existante)" else False
 
-# --- 2. CALCULATIONS ---
+    st.write("---")
+
+    # --- SECTION C: OPTIONNEL ---
+    with st.expander("3. Ajout de Déchets (Optionnel)"):
+        ajout_msw = st.checkbox("Co-traiter des ordures ménagères ?", value=False)
+        if ajout_msw:
+            masse_msw = st.number_input("Masse Déchets (kg/jour)", value=2000.0)
+            hum_msw = st.slider("Humidité Déchets (%)", 0, 60, 20)
+            lhv_msw = st.number_input("PCI Déchets (MJ/kg)", value=18.0)
+        else:
+            masse_msw = 0; hum_msw = 0; lhv_msw = 0
+
+    with st.expander("4. Données Financières"):
+        prix_elec = st.number_input("Prix de vente Élec ($/kWh)", value=0.15)
+        capex_manual = st.number_input("Budget Max ($ - laisser 0 si inconnu)", value=0)
+
+# --- 3. MOTEUR DE CALCUL ---
 
 def run_simulation():
-    # A. MASS BALANCE
+    # 1. Bilan Massique
     masse_boue = vol_boue * 1000
-    ms_boue = masse_boue * (1 - humidite/100)
+    ms_boue = masse_boue * (ts_percent / 100.0)
     eau_boue = masse_boue - ms_boue
     
     ms_msw = masse_msw * (1 - hum_msw/100)
@@ -54,137 +108,130 @@ def run_simulation():
     total_dry = ms_boue + ms_msw
     total_water = eau_boue + eau_msw
     
-    # B. ENERGY BALANCE
+    # 2. Bilan Énergie
     energy_in = (ms_boue * 12.0) + (ms_msw * lhv_msw)
-    energy_evap = total_water * 3.2 # MJ required to evaporate water
+    energy_evap = total_water * 3.2 
     energy_net = energy_in - energy_evap
     
-    # C. RECOMMENDATION
-    recos = []
+    # 3. Logique de Sélection
+    logic_msg = ""
     
-    # SSSP Logic
-    s_sssp = 5
-    if type_boue == "Industrial / Toxic Sludge": s_sssp += 10
-    if cible == "Materials (Construction)": s_sssp += 8
-    if cible == "Zero Liquid Discharge (ZLD)": s_sssp += 5
-    if 30 <= vol_boue <= 100: s_sssp += 3
-    recos.append({"Tech": "SSSP (THESVORES)", "Score": s_sssp, "Type": "Materials"})
+    # Définition des candidats
+    opt_ankur_complet = {"Tech": "ANKUR COMPLET (Intégré)", "Score": 0, "Desc": "Remplace une STEP (Délai 6-7 mois). Traite l'eau et la boue."}
+    opt_ankur_basic = {"Tech": "ANKUR BASIQUE", "Score": 0, "Desc": "Module Énergie seul. Nécessite des boues déjà déshydratées."}
+    opt_ssp = {"Tech": "THESVORES (SSP)", "Score": 0, "Desc": "Valorisation en matériaux/briques. Simple et robuste."}
+    opt_incin = {"Tech": "INCINÉRATEUR (Omni Processor)", "Score": 0, "Desc": "Haute technologie pour grands volumes ou boues activées."}
+
+    # ARBRE DE DÉCISION
     
-    # Ankur Logic
-    s_ankur = 5
-    if ajout_msw: s_ankur += 6
-    if vol_boue < 50: s_ankur += 4
-    recos.append({"Tech": "ANKUR SCIENTIFIC", "Score": s_ankur, "Type": "Hybrid Energy"})
-    
-    # Janicki Logic
-    s_op = 5
-    if vol_boue > 80: s_op += 8
-    if humidite < 80: s_op += 4
-    if cible == "Zero Liquid Discharge (ZLD)": s_op += 4
-    recos.append({"Tech": "JANICKI / SEDRON", "Score": s_op, "Type": "Incineration"})
-    
+    # CAS 1 : RÉSEAU
+    if mode_collecte == "Réseau d'Égout (Direct)":
+        if is_station_existante and type_boue == "Boues Activées (STEP)":
+            logic_msg = "Réseau + Station (Boues Activées) ➔ Incinérateur recommandé."
+            opt_incin["Score"] = 95
+            opt_ankur_basic["Score"] = 60 # Possible si séchage solaire existant
+        else:
+            logic_msg = "Réseau standard ➔ Incinérateur préféré."
+            opt_incin["Score"] = 80
+            opt_ankur_complet["Score"] = 50
+
+    # CAS 2 : CAMIONS (VIDANGEURS)
+    else: 
+        if is_station_existante:
+            logic_msg = "Camions + Station Existante ➔ Complément (Ankur Basique ou SSP)."
+            opt_ankur_basic["Score"] = 90
+            opt_ssp["Score"] = 85
+            opt_ankur_complet["Score"] = 20 # Inutile de refaire une station
+        else:
+            logic_msg = "Camions + Terrain Nu ➔ Solution 'Clé en main' requise (Ankur Complet)."
+            opt_ankur_complet["Score"] = 95
+            opt_incin["Score"] = 60
+            opt_ankur_basic["Score"] = 0 # Impossible sans infra
+            opt_ssp["Score"] = 20 # Trop complexe à gérer seul sans eau traitée
+
+    # CONTRAINTE MÉTAUX LOURDS
+    if heavy_metals:
+        opt_ssp["Score"] = 0 # INTERDIT : On ne fait pas de briques avec des métaux
+        opt_ssp["Desc"] += " ⛔ REJETÉ (MÉTAUX)"
+        logic_msg += " | ⚠️ SSP Disqualifié (Métaux)."
+
+    # TRI
+    recos = [opt_ankur_complet, opt_ankur_basic, opt_ssp, opt_incin]
     recos.sort(key=lambda x: x["Score"], reverse=True)
     best = recos[0]
-    
-    # D. FINANCIALS
-    # CAPEX
-    if capex_manual > 0:
-        capex = capex_manual
-    elif "SSSP" in best['Tech']:
-        capex = 300000 + (vol_boue * 7000)
-    elif "JANICKI" in best['Tech']:
-        capex = 2000000 + (vol_boue * 10000)
-    else:
-        capex = 150000 + (vol_boue * 5000)
-        
-    # INCOME
-    inc_tipping = vol_boue * tipping_fee
-    inc_prod = 0
-    prod_txt = ""
-    
-    if "SSSP" in best['Tech']:
-        qty = total_dry * 0.3 * 4 # Approx pavers
-        inc_prod = qty * prix_pave
-        prod_txt = f"{int(qty)} Pavers"
-    elif energy_net > 0:
-        kwh = (energy_net / 3.6) * 0.20
-        net_kwh = max(0, kwh - (100 + vol_boue*2))
-        inc_prod = net_kwh * prix_elec
-        prod_txt = f"{int(net_kwh)} kWh"
-    else:
-        prod_txt = "0 (Energy Deficit)"
-        
-    daily_income = inc_tipping + inc_prod
-    
-    # EXPENSE
-    fuel_cost = 0
-    if energy_net < 0:
-        fuel_cost = (abs(energy_net) / 35) * 1.0 # Fuel to burn wet sludge
-        
-    daily_opex = 100 + ((capex*0.05)/365) + fuel_cost # Labor + Maint + Fuel
-    daily_profit = daily_income - daily_opex
-    
-    roi = capex / (daily_profit * 300) if daily_profit > 0 else 99.9
-    
+
+    # 4. Estimation Financière (Modelisation simplifiée)
+    capex = capex_manual if capex_manual > 0 else 0
+    if capex == 0:
+        if best["Tech"] == "ANKUR COMPLET (Intégré)": capex = 900000 + (vol_boue * 6500)
+        elif best["Tech"] == "ANKUR BASIQUE": capex = 450000 + (vol_boue * 4000)
+        elif "INCINÉRATEUR" in best["Tech"]: capex = 2500000 + (vol_boue * 12000)
+        else: capex = 300000 + (vol_boue * 3000) # SSP
+
+    elec_prod = max(0, (energy_net / 3.6) * 0.25) if "ANKUR" in best["Tech"] or "INCINÉRATEUR" in best["Tech"] else 0
+    income = elec_prod * prix_elec
+    opex = capex * 0.08 / 365
+    profit = income - opex
+
     return {
-        "Mass_Dry": total_dry,
-        "Mass_Water": total_water,
-        "Energy_Net": energy_net,
         "Best": best,
         "Recos": recos,
-        "Fin": {
-            "CAPEX": capex,
-            "Income": daily_income,
-            "OPEX": daily_opex,
-            "Profit": daily_profit,
-            "ROI": roi,
-            "Prod": prod_txt,
-            "Fuel_Cost": fuel_cost
-        }
+        "Logique": logic_msg,
+        "Masse": {"Eau": total_water, "Sec": total_dry},
+        "Finances": {"CAPEX": capex, "OPEX": opex, "Income": income, "Profit": profit, "Elec": elec_prod}
     }
 
-# --- 3. DASHBOARD ---
+# --- 4. INTERFACE RÉSULTATS (TABS) ---
+
 try:
     data = run_simulation()
-    fin = data["Fin"]
     best = data["Best"]
+    fin = data["Finances"]
 
-    # TOP BANNER
-    st.success(f"🏆 Recommended Technology: **{best['Tech']}** (Score: {best['Score']})")
-    
-    # KPIS
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("CAPEX Est.", f"${int(fin['CAPEX']):,}")
-    k2.metric("Daily Profit", f"${int(fin['Profit'])}", delta_color="normal" if fin['Profit']>0 else "inverse")
-    k3.metric("ROI (Payback)", f"{fin['ROI']:.1f} Years")
-    k4.metric("Production", fin['Prod'])
+    st.markdown(f"### 🎯 Recommandation : **{best['Tech']}**")
+    st.caption(f"Motif : {data['Logique']}")
 
-    st.markdown("---")
+    # Utilisation des TABS pour une meilleure expérience mobile
+    tab1, tab2, tab3 = st.tabs(["📊 Vue d'ensemble", "💰 Analyse Financière", "⚙️ Détails Techniques"])
 
-    # CHARTS
-    c1, c2 = st.columns(2)
-    
-    with c1:
-        st.subheader("💰 Financial Overview")
-        chart_data = pd.DataFrame({
-            "Category": ["Income (Sales+Fees)", "OPEX (Costs)"],
-            "Amount": [fin['Income'], fin['OPEX']]
-        })
-        st.bar_chart(chart_data.set_index("Category"))
-        if fin['Fuel_Cost'] > 0:
-            st.error(f"⚠️ High Moisture Alert! Fuel Cost: ${int(fin['Fuel_Cost'])}/day")
+    with tab1:
+        st.success(f"**Solution Retenue : {best['Tech']}**")
+        st.info(f"ℹ️ {best['Desc']}")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Score de Pertinence", f"{best['Score']}/100")
+        with col2:
+            if "ANKUR" in best['Tech']:
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Biomass_gasification_plant.jpg/320px-Biomass_gasification_plant.jpg", caption="Concept Ankur (Illustration)")
+            elif "SSP" in best['Tech']:
+                st.markdown("🧱 **Sortie :** Matériaux de construction (Pavés/Briques)")
 
-    with c2:
-        st.subheader("⚖️ Mass Balance")
-        mass_data = pd.DataFrame({
-            "Type": ["Water (To Evaporate)", "Dry Solids (Fuel)"],
-            "Kg/Day": [data['Mass_Water'], data['Mass_Dry']]
-        })
-        st.bar_chart(mass_data.set_index("Type"))
+        st.warning("Vérifiez les onglets 'Finance' et 'Technique' pour les détails.")
 
-    # STRATEGY TABLE
-    st.subheader("📊 Strategic Comparison")
-    st.dataframe(pd.DataFrame(data["Recos"]), use_container_width=True)
+    with tab2:
+        st.header("Rentabilité Estimée")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Investissement (CAPEX)", f"${int(fin['CAPEX']):,}")
+        c2.metric("Coûts Ops (jour)", f"${int(fin['OPEX'])}")
+        c3.metric("Profit Net (jour)", f"${int(fin['Profit'])}", delta_color="normal" if fin['Profit']>0 else "inverse")
+        
+        st.bar_chart(pd.DataFrame({
+            "Type": ["Revenus Élec.", "Dépenses Ops."],
+            "Montant ($)": [fin['Income'], fin['OPEX']]
+        }).set_index("Type"))
+
+    with tab3:
+        st.header("Comparatif Technique")
+        df = pd.DataFrame(data["Recos"])
+        st.dataframe(df[["Tech", "Score", "Desc"]], hide_index=True, use_container_width=True)
+        
+        st.subheader("Bilan Matière")
+        st.write(f"- Matière Sèche (Combustible/Matériau) : **{int(data['Masse']['Sec'])} kg/jour**")
+        st.write(f"- Eau à traiter/évaporer : **{int(data['Masse']['Eau'])} Litres/jour**")
+        
+        if heavy_metals:
+            st.error("🚨 ALERTE : Métaux lourds détectés. La solution SSP a été bloquée par sécurité.")
 
 except Exception as e:
-    st.error(f"An error occurred: {e}")
+    st.error(f"Erreur : {e}")
