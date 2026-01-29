@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-# --- 0. CONFIGURATION ET STYLE ---
+# --- 0. CONFIGURATION & STYLE ---
 st.set_page_config(
     page_title="OP Architect V3",
     page_icon="🏭",
@@ -9,7 +9,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS pour améliorer l'affichage sur mobile (centrage des titres, padding)
+# CSS for better mobile display (centering titles, padding)
 st.markdown("""
 <style>
     .main > div {padding-top: 2rem;}
@@ -18,86 +18,93 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 1. GUIDE UTILISATEUR (Visible sur mobile et desktop) ---
-with st.expander("ℹ️ **GUIDE DE DÉMARRAGE : Comment utiliser cet outil ?**", expanded=True):
+# --- 1. USER GUIDE (Visible on Mobile & Desktop) ---
+with st.expander("ℹ️ **START GUIDE: How to use this tool?**", expanded=True):
     st.markdown("""
-    1. **Ouvrez le menu à gauche** (sur mobile, cliquez sur la flèche `>`).
-    2. **Remplissez les sections** dans l'ordre : Qualité des boues, Infrastructure, puis Finance.
-    3. **L'outil calcule automatiquement** la meilleure solution entre :
-       * *Ankur* (Énergie), *SSP/Thesvores* (Matériaux), ou *Incinérateur* (Traitement de masse).
-    4. **Naviguez dans les onglets ci-dessous** pour voir les résultats financiers et techniques.
+    1. **Open the sidebar** on the left (click `>` on mobile).
+    2. **Fill in the sections** in order: Sludge Quality, Infrastructure, then Financials.
+    3. **The tool automatically calculates** the best fit among:
+       * *Ankur* (Energy), *SSP/Thesvores* (Materials), or *Incinerator* (Mass Treatment).
+    4. **Navigate the tabs below** to see financial and technical results.
     """)
 
-# --- 2. SIDEBAR: INPUTS (AVEC AIDES EXPLICITES) ---
+# --- 2. SIDEBAR: INPUTS ---
 with st.sidebar:
-    st.title("🎛️ Paramètres du Projet")
-    st.info("👈 Commencez par régler ces curseurs pour définir votre scénario.")
+    st.title("🎛️ Project Settings")
+    st.info("👈 Adjust these sliders to define your scenario.")
 
-    # --- SECTION A: QUALITÉ ---
-    st.header("1. Caractérisation de la Boue")
+    # --- SECTION A: QUALITY ---
+    st.header("1. Sludge Characterization")
     
     type_boue = st.selectbox(
-        "Quel type de boue ?", 
-        ["Boues de Vidange (Domestique)", "Boues Activées (STEP)", "Boues Industrielles"],
-        help="Le type de boue influence le pouvoir calorifique et le choix de l'incinérateur."
+        "Sludge Type", 
+        ["Fecal Sludge (Domestic)", "Activated Sludge (WWTP)", "Industrial Sludge"],
+        help="Sludge type impacts calorific value and incinerator choice."
     )
 
     ts_percent = st.slider(
-        "Taux de Siccité (TS) %", 
+        "Dry Solids Content (TS) %", 
         min_value=1.0, max_value=90.0, value=5.0, step=0.5,
-        help="C'est la concentration en matière solide.\n- 1-5% : Boue liquide (camion hydrocureur)\n- 20-30% : Boue pâteuse (sortie de filtre)\n- 80%+ : Boue séchée"
+        help="Concentration of solid matter.\n- 1-5%: Liquid (Vacuum truck)\n- 20-30%: Paste (Belt press output)\n- 80%+: Dried"
     )
     
     heavy_metals = st.toggle(
-        "Présence de Métaux Lourds ?", 
+        "Heavy Metals Presence?", 
         value=False,
-        help="Activez ceci si des industries rejettent dans le réseau. Cela bloque certaines valorisations (briques SSP)."
+        help="Enable this if industries discharge into the network. This blocks certain valorizations (SSP Bricks)."
     )
 
     vol_boue = st.number_input(
-        "Volume à traiter (m³/jour)", 
+        "Daily Volume (m³/day)", 
         value=40.0, step=5.0,
-        help="Volume total entrant dans l'usine chaque jour."
+        help="Total volume entering the facility daily."
     )
 
     st.write("---")
 
-    # --- SECTION B: LOGISTIQUE (CŒUR DE LA LOGIQUE) ---
-    st.header("2. Infrastructure & Logistique")
+    # --- SECTION B: LOGISTICS (CORE LOGIC) ---
+    st.header("2. Infrastructure & Logistics")
     
     mode_collecte = st.radio(
-        "Comment les boues arrivent-elles ?", 
-        ["Camions / Apport Volontaire", "Réseau d'Égout (Direct)"],
-        help="Si 'Réseau', la boue arrive en continu. Si 'Camions', elle arrive par lots."
+        "Collection Method", 
+        ["Trucks / Voluntary Drop-off", "Sewer Network (Direct)"],
+        help="If 'Sewer', sludge arrives continuously. If 'Trucks', it arrives in batches."
     )
     
     has_station = st.radio(
-        "Y a-t-il DÉJÀ une station de traitement ?",
-        ["Non (Terrain nu)", "Oui (Station existante)"],
-        help="Si 'Oui', nous proposons des modules complémentaires (Ankur Basique). Si 'Non', nous proposons une solution complète (Ankur Intégré)."
+        "Is there an EXISTING Treatment Plant?",
+        ["No (Greenfield / Empty Land)", "Yes (Existing WWTP/FSTP)"],
+        help="If 'Yes', we propose add-on modules (Ankur Basic). If 'No', we propose a full solution (Ankur Integrated)."
     )
-    is_station_existante = True if has_station == "Oui (Station existante)" else False
+    is_station_existante = True if has_station == "Yes (Existing WWTP/FSTP)" else False
 
     st.write("---")
 
-    # --- SECTION C: OPTIONNEL ---
-    with st.expander("3. Ajout de Déchets (Optionnel)"):
-        ajout_msw = st.checkbox("Co-traiter des ordures ménagères ?", value=False)
+    # --- SECTION C: OPTIONAL ---
+    with st.expander("3. Co-Substrates (Optional)"):
+        ajout_msw = st.checkbox("Co-process Municipal Solid Waste?", value=False)
         if ajout_msw:
-            masse_msw = st.number_input("Masse Déchets (kg/jour)", value=2000.0)
-            hum_msw = st.slider("Humidité Déchets (%)", 0, 60, 20)
-            lhv_msw = st.number_input("PCI Déchets (MJ/kg)", value=18.0)
+            masse_msw = st.number_input("Waste Mass (kg/day)", value=2000.0)
+            hum_msw = st.slider("Waste Moisture (%)", 0, 60, 20)
+            lhv_msw = st.number_input("Waste LHV (MJ/kg)", value=18.0)
         else:
             masse_msw = 0; hum_msw = 0; lhv_msw = 0
 
-    with st.expander("4. Données Financières"):
-        prix_elec = st.number_input("Prix de vente Élec ($/kWh)", value=0.15)
-        capex_manual = st.number_input("Budget Max ($ - laisser 0 si inconnu)", value=0)
+    with st.expander("4. Financial Data"):
+        prix_elec = st.number_input("Electricity Sales Price ($/kWh)", value=0.15)
+        capex_manual = st.number_input("Max Budget ($ - leave 0 if unknown)", value=0)
 
-# --- 3. MOTEUR DE CALCUL ---
+    # --- DEVELOPER CREDITS ---
+    st.write("---")
+    st.markdown("### 👨‍💻 Developer & Contact")
+    st.markdown("**Mansour Fall**")
+    st.markdown("📧 [magnfall1992@gmail.com](mailto:magnfall1992@gmail.com)")
+    st.caption("For clarifications or orientation.")
+
+# --- 3. CALCULATION ENGINE ---
 
 def run_simulation():
-    # 1. Bilan Massique
+    # 1. Mass Balance
     masse_boue = vol_boue * 1000
     ms_boue = masse_boue * (ts_percent / 100.0)
     eau_boue = masse_boue - ms_boue
@@ -108,67 +115,67 @@ def run_simulation():
     total_dry = ms_boue + ms_msw
     total_water = eau_boue + eau_msw
     
-    # 2. Bilan Énergie
+    # 2. Energy Balance
     energy_in = (ms_boue * 12.0) + (ms_msw * lhv_msw)
     energy_evap = total_water * 3.2 
     energy_net = energy_in - energy_evap
     
-    # 3. Logique de Sélection
+    # 3. Selection Logic
     logic_msg = ""
     
-    # Définition des candidats
-    opt_ankur_complet = {"Tech": "ANKUR COMPLET (Intégré)", "Score": 0, "Desc": "Remplace une STEP (Délai 6-7 mois). Traite l'eau et la boue."}
-    opt_ankur_basic = {"Tech": "ANKUR BASIQUE", "Score": 0, "Desc": "Module Énergie seul. Nécessite des boues déjà déshydratées."}
-    opt_ssp = {"Tech": "THESVORES (SSP)", "Score": 0, "Desc": "Valorisation en matériaux/briques. Simple et robuste."}
-    opt_incin = {"Tech": "INCINÉRATEUR (Omni Processor)", "Score": 0, "Desc": "Haute technologie pour grands volumes ou boues activées."}
+    # Candidate Definitions
+    opt_ankur_complet = {"Tech": "ANKUR INTEGRATED (Full)", "Score": 0, "Desc": "Replaces a WWTP (6-7 months timeline). Treats both water and sludge."}
+    opt_ankur_basic = {"Tech": "ANKUR BASIC", "Score": 0, "Desc": "Energy module only. Requires pre-dried sludge (no dehydrator included)."}
+    opt_ssp = {"Tech": "THESVORES (SSP)", "Score": 0, "Desc": "Valorization into materials (Bricks/Pavers). Simple and robust."}
+    opt_incin = {"Tech": "INCINERATOR (Omni Processor)", "Score": 0, "Desc": "High-tech solution for large volumes or Activated Sludge."}
 
-    # ARBRE DE DÉCISION
+    # DECISION TREE
     
-    # CAS 1 : RÉSEAU
-    if mode_collecte == "Réseau d'Égout (Direct)":
-        if is_station_existante and type_boue == "Boues Activées (STEP)":
-            logic_msg = "Réseau + Station (Boues Activées) ➔ Incinérateur recommandé."
+    # CASE 1 : SEWER NETWORK
+    if mode_collecte == "Sewer Network (Direct)":
+        if is_station_existante and type_boue == "Activated Sludge (WWTP)":
+            logic_msg = "Sewer + WWTP (Activated Sludge) ➔ Incinerator recommended."
             opt_incin["Score"] = 95
-            opt_ankur_basic["Score"] = 60 # Possible si séchage solaire existant
+            opt_ankur_basic["Score"] = 60 # Possible if solar drying exists
         else:
-            logic_msg = "Réseau standard ➔ Incinérateur préféré."
+            logic_msg = "Standard Sewer ➔ Incinerator preferred."
             opt_incin["Score"] = 80
             opt_ankur_complet["Score"] = 50
 
-    # CAS 2 : CAMIONS (VIDANGEURS)
+    # CASE 2 : TRUCKS (VACUUM TANKERS)
     else: 
         if is_station_existante:
-            logic_msg = "Camions + Station Existante ➔ Complément (Ankur Basique ou SSP)."
+            logic_msg = "Trucks + Existing Plant ➔ Add-on needed (Ankur Basic or SSP)."
             opt_ankur_basic["Score"] = 90
             opt_ssp["Score"] = 85
-            opt_ankur_complet["Score"] = 20 # Inutile de refaire une station
+            opt_ankur_complet["Score"] = 20 # Redundant to build a new plant
         else:
-            logic_msg = "Camions + Terrain Nu ➔ Solution 'Clé en main' requise (Ankur Complet)."
+            logic_msg = "Trucks + Empty Land ➔ 'Turnkey' solution required (Ankur Integrated)."
             opt_ankur_complet["Score"] = 95
             opt_incin["Score"] = 60
-            opt_ankur_basic["Score"] = 0 # Impossible sans infra
-            opt_ssp["Score"] = 20 # Trop complexe à gérer seul sans eau traitée
+            opt_ankur_basic["Score"] = 0 # Impossible without infrastructure
+            opt_ssp["Score"] = 20 # Too complex to manage alone without treated water
 
-    # CONTRAINTE MÉTAUX LOURDS
+    # HEAVY METALS CONSTRAINT
     if heavy_metals:
-        opt_ssp["Score"] = 0 # INTERDIT : On ne fait pas de briques avec des métaux
-        opt_ssp["Desc"] += " ⛔ REJETÉ (MÉTAUX)"
-        logic_msg += " | ⚠️ SSP Disqualifié (Métaux)."
+        opt_ssp["Score"] = 0 # FORBIDDEN: We don't make bricks with metals
+        opt_ssp["Desc"] += " ⛔ REJECTED (METALS)"
+        logic_msg += " | ⚠️ SSP Disqualified (Metals)."
 
-    # TRI
+    # SORTING
     recos = [opt_ankur_complet, opt_ankur_basic, opt_ssp, opt_incin]
     recos.sort(key=lambda x: x["Score"], reverse=True)
     best = recos[0]
 
-    # 4. Estimation Financière (Modelisation simplifiée)
+    # 4. Financial Estimation (Simplified Model)
     capex = capex_manual if capex_manual > 0 else 0
     if capex == 0:
-        if best["Tech"] == "ANKUR COMPLET (Intégré)": capex = 900000 + (vol_boue * 6500)
-        elif best["Tech"] == "ANKUR BASIQUE": capex = 450000 + (vol_boue * 4000)
-        elif "INCINÉRATEUR" in best["Tech"]: capex = 2500000 + (vol_boue * 12000)
+        if best["Tech"] == "ANKUR INTEGRATED (Full)": capex = 900000 + (vol_boue * 6500)
+        elif best["Tech"] == "ANKUR BASIC": capex = 450000 + (vol_boue * 4000)
+        elif "INCINERATOR" in best["Tech"]: capex = 2500000 + (vol_boue * 12000)
         else: capex = 300000 + (vol_boue * 3000) # SSP
 
-    elec_prod = max(0, (energy_net / 3.6) * 0.25) if "ANKUR" in best["Tech"] or "INCINÉRATEUR" in best["Tech"] else 0
+    elec_prod = max(0, (energy_net / 3.6) * 0.25) if "ANKUR" in best["Tech"] or "INCINERATOR" in best["Tech"] else 0
     income = elec_prod * prix_elec
     opex = capex * 0.08 / 365
     profit = income - opex
@@ -181,57 +188,57 @@ def run_simulation():
         "Finances": {"CAPEX": capex, "OPEX": opex, "Income": income, "Profit": profit, "Elec": elec_prod}
     }
 
-# --- 4. INTERFACE RÉSULTATS (TABS) ---
+# --- 4. RESULTS INTERFACE (TABS) ---
 
 try:
     data = run_simulation()
     best = data["Best"]
     fin = data["Finances"]
 
-    st.markdown(f"### 🎯 Recommandation : **{best['Tech']}**")
-    st.caption(f"Motif : {data['Logique']}")
+    st.markdown(f"### 🎯 Recommendation: **{best['Tech']}**")
+    st.caption(f"Logic: {data['Logique']}")
 
-    # Utilisation des TABS pour une meilleure expérience mobile
-    tab1, tab2, tab3 = st.tabs(["📊 Vue d'ensemble", "💰 Analyse Financière", "⚙️ Détails Techniques"])
+    # TABS for Mobile UX
+    tab1, tab2, tab3 = st.tabs(["📊 Overview", "💰 Financial Analysis", "⚙️ Technical Details"])
 
     with tab1:
-        st.success(f"**Solution Retenue : {best['Tech']}**")
+        st.success(f"**Selected Solution: {best['Tech']}**")
         st.info(f"ℹ️ {best['Desc']}")
         
         col1, col2 = st.columns(2)
         with col1:
-            st.metric("Score de Pertinence", f"{best['Score']}/100")
+            st.metric("Relevance Score", f"{best['Score']}/100")
         with col2:
             if "ANKUR" in best['Tech']:
-                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Biomass_gasification_plant.jpg/320px-Biomass_gasification_plant.jpg", caption="Concept Ankur (Illustration)")
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Biomass_gasification_plant.jpg/320px-Biomass_gasification_plant.jpg", caption="Ankur Concept (Illustration)")
             elif "SSP" in best['Tech']:
-                st.markdown("🧱 **Sortie :** Matériaux de construction (Pavés/Briques)")
+                st.markdown("🧱 **Output:** Construction Materials (Pavers/Bricks)")
 
-        st.warning("Vérifiez les onglets 'Finance' et 'Technique' pour les détails.")
+        st.warning("Check 'Financial' and 'Technical' tabs for details.")
 
     with tab2:
-        st.header("Rentabilité Estimée")
+        st.header("Estimated Profitability")
         c1, c2, c3 = st.columns(3)
-        c1.metric("Investissement (CAPEX)", f"${int(fin['CAPEX']):,}")
-        c2.metric("Coûts Ops (jour)", f"${int(fin['OPEX'])}")
-        c3.metric("Profit Net (jour)", f"${int(fin['Profit'])}", delta_color="normal" if fin['Profit']>0 else "inverse")
+        c1.metric("Investment (CAPEX)", f"${int(fin['CAPEX']):,}")
+        c2.metric("Daily OPEX", f"${int(fin['OPEX'])}")
+        c3.metric("Daily Net Profit", f"${int(fin['Profit'])}", delta_color="normal" if fin['Profit']>0 else "inverse")
         
         st.bar_chart(pd.DataFrame({
-            "Type": ["Revenus Élec.", "Dépenses Ops."],
-            "Montant ($)": [fin['Income'], fin['OPEX']]
+            "Type": ["Electricity Sales", "OPEX Costs"],
+            "Amount ($)": [fin['Income'], fin['OPEX']]
         }).set_index("Type"))
 
     with tab3:
-        st.header("Comparatif Technique")
+        st.header("Technical Comparison")
         df = pd.DataFrame(data["Recos"])
         st.dataframe(df[["Tech", "Score", "Desc"]], hide_index=True, use_container_width=True)
         
-        st.subheader("Bilan Matière")
-        st.write(f"- Matière Sèche (Combustible/Matériau) : **{int(data['Masse']['Sec'])} kg/jour**")
-        st.write(f"- Eau à traiter/évaporer : **{int(data['Masse']['Eau'])} Litres/jour**")
+        st.subheader("Mass Balance")
+        st.write(f"- Dry Matter (Fuel/Material): **{int(data['Masse']['Sec'])} kg/day**")
+        st.write(f"- Water to Treat/Evaporate: **{int(data['Masse']['Eau'])} Liters/day**")
         
         if heavy_metals:
-            st.error("🚨 ALERTE : Métaux lourds détectés. La solution SSP a été bloquée par sécurité.")
+            st.error("🚨 ALERT: Heavy metals detected. SSP solution blocked for safety reasons.")
 
 except Exception as e:
-    st.error(f"Erreur : {e}")
+    st.error(f"Error: {e}")
