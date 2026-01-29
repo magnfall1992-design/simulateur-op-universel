@@ -3,9 +3,9 @@ import pandas as pd
 import os
 
 # --- 0. CONFIGURATION ---
-st.set_page_config(page_title="OP Architect V6", page_icon="🏭", layout="wide")
+st.set_page_config(page_title="OP Architect V7", page_icon="🏭", layout="wide")
 
-# CSS simplifié pour éviter les conflits d'affichage
+# CSS pour le style des cartes de contact
 st.markdown("""
 <style>
     .contact-box {
@@ -18,15 +18,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 1. INITIALISATION DES VARIABLES (Pour éviter les bugs) ---
+# --- 1. INITIALISATION ---
 masse_msw = 0
 hum_msw = 0
 lhv_msw = 0
 
-# --- 2. SIDEBAR ---
+# --- 2. SIDEBAR (Paramètres) ---
 with st.sidebar:
     st.title("🎛️ Project Settings")
     
+    # Section Qualité
     st.header("1. Sludge Characterization")
     type_boue = st.selectbox("Sludge Type", ["Fecal Sludge (Domestic)", "Activated Sludge (WWTP)", "Industrial Sludge"])
     ts_percent = st.slider("Dry Solids Content (TS) %", 1.0, 90.0, 5.0, 0.5)
@@ -34,12 +35,16 @@ with st.sidebar:
     vol_boue = st.number_input("Daily Volume (m³/day)", value=40.0, step=5.0)
 
     st.write("---")
+    
+    # Section Logistique
     st.header("2. Infrastructure")
     mode_collecte = st.radio("Collection Method", ["Trucks", "Sewer Network"])
     has_station = st.radio("Existing Plant?", ["No (Greenfield)", "Yes (Existing)"])
     is_station_existante = True if has_station == "Yes (Existing)" else False
 
     st.write("---")
+    
+    # Section Finance & Déchets
     with st.expander("3. Financials & Waste"):
         prix_elec = st.number_input("Elec. Price ($/kWh)", value=0.15)
         capex_manual = st.number_input("Max Budget ($)", value=0)
@@ -49,12 +54,13 @@ with st.sidebar:
             lhv_msw = 18.0
 
     st.write("---")
+    
+    # Crédits Développeur
     st.markdown("### 👨‍💻 Developer")
     st.markdown("**Mansour Fall**")
     st.markdown("magnfall1992@gmail.com")
 
 # --- 3. MOTEUR DE CALCUL ---
-# Calculs directs (sans fonction pour éviter les problèmes de portée de variables)
 
 # Bilan Masse
 masse_boue = vol_boue * 1000
@@ -67,96 +73,64 @@ total_water = eau_boue
 energy_in = (ms_boue * 12.0) + (masse_msw * lhv_msw)
 energy_net = energy_in - (total_water * 3.2)
 
-# --- 4. DÉFINITION DES SOLUTIONS ---
+# --- 4. DÉFINITION DES SOLUTIONS (Données & Contacts) ---
 opt_ankur_full = {
     "Tech": "ANKUR INTEGRATED (Full)", "Score": 0,
-    "Desc": "Replaces WWTP. Waste to Energy.",
+    "Desc": "Replaces WWTP. Treats water & sludge (Waste to Energy).",
     "Contact": "Jignesh Shah", "Email": "jignesh.shah@ankurscientific.com",
     "Image": "ankur_diagram.png"
 }
 opt_ankur_basic = {
     "Tech": "ANKUR BASIC", "Score": 0,
-    "Desc": "Energy module only. Needs dry sludge.",
+    "Desc": "Energy module only. Needs dry sludge/pre-treatment.",
     "Contact": "Jignesh Shah", "Email": "jignesh.shah@ankurscientific.com",
     "Image": "ankur_diagram.png"
 }
 opt_ssp = {
     "Tech": "THESVORES (SSP)", "Score": 0,
-    "Desc": "Materials (Bricks). Simple & Robust.",
+    "Desc": "Materials valorization (Bricks). Simple & Robust.",
     "Contact": "Saibal (SSP Pvt Ltd)", "Email": "sg1965@ssp.co.in",
     "Image": "ssp_diagram.png"
 }
 opt_janicki = {
     "Tech": "INCINERATOR (Omni Processor)", "Score": 0,
-    "Desc": "High-tech incineration (Sedron).",
+    "Desc": "High-tech incineration (Janicki/Sedron).",
     "Contact": "Matthew Bartholow", "Email": "matthew.bartholow@janicki.com",
     "Image": "janicki_diagram.png"
 }
 
-# --- 5. LOGIQUE DE DÉCISION ---
+# --- 5. LOGIQUE DÉCISIONNELLE ---
 logic_msg = ""
 
 if mode_collecte == "Sewer Network":
+    # Cas Réseau
     if is_station_existante and type_boue == "Activated Sludge (WWTP)":
-        logic_msg = "Sewer + WWTP -> Incinerator"
+        logic_msg = "Scenario: Sewer + WWTP (Activated Sludge) -> Incinerator recommended."
         opt_janicki["Score"] = 95
         opt_ankur_basic["Score"] = 60
     else:
-        logic_msg = "Sewer Standard -> Incinerator"
+        logic_msg = "Scenario: Sewer Standard -> Incinerator preferred."
         opt_janicki["Score"] = 80
         opt_ankur_full["Score"] = 50
-else: # Trucks
+else: 
+    # Cas Camions
     if is_station_existante:
-        logic_msg = "Trucks + Existing -> Add-on (Ankur Basic/SSP)"
+        logic_msg = "Scenario: Trucks + Existing Plant -> Add-on (Ankur Basic or SSP)."
         opt_ankur_basic["Score"] = 90
         opt_ssp["Score"] = 85
-        opt_ankur_full["Score"] = 20
+        opt_ankur_full["Score"] = 20 # Pénalité car doublon avec la station
     else:
-        logic_msg = "Trucks + Greenfield -> Turnkey (Ankur Full)"
+        logic_msg = "Scenario: Trucks + Greenfield -> Turnkey Solution (Ankur Full)."
         opt_ankur_full["Score"] = 95
         opt_janicki["Score"] = 60
-        opt_ankur_basic["Score"] = 0
-        opt_ssp["Score"] = 20
+        opt_ankur_basic["Score"] = 0 # Impossible sans station
+        opt_ssp["Score"] = 20 # Trop complexe à gérer seul
 
+# Contrainte Métaux Lourds
 if heavy_metals:
     opt_ssp["Score"] = 0
-    opt_ssp["Desc"] += " (REJECTED: METALS)"
+    opt_ssp["Desc"] += " (⛔ REJECTED: HEAVY METALS)"
+    logic_msg += " | SSP rejected due to metals."
 
 # Classement
-recos = [opt_ankur_full, opt_ankur_basic, opt_ssp, opt_janicki]
-recos.sort(key=lambda x: x["Score"], reverse=True)
-best = recos[0]
-
-# Finances
-capex = capex_manual if capex_manual > 0 else 500000
-elec_prod = max(0, (energy_net / 3.6) * 0.25)
-income = elec_prod * prix_elec
-profit = income - (capex * 0.08 / 365)
-
-# --- 6. AFFICHAGE RÉSULTATS ---
-st.success(f"🏆 Recommendation: **{best['Tech']}**")
-st.info(f"Logic: {logic_msg}")
-
-tab1, tab2, tab3 = st.tabs(["Overview", "Financials", "Tech List"])
-
-with tab1:
-    col_img, col_txt = st.columns([1, 1])
-    with col_img:
-        st.markdown("**Process Diagram**")
-        if os.path.exists(best["Image"]):
-            st.image(best["Image"], use_container_width=True)
-        else:
-            st.warning(f"Image not found: {best['Image']}")
-            st.caption("Please upload the .png file to the folder.")
-            
-    with col_txt:
-        st.markdown("### Contact Info")
-        st.write(f"**Name:** {best['Contact']}")
-        st.write(f"**Email:** {best['Email']}")
-        st.metric("Score", best["Score"])
-        st.write(best["Desc"])
-
-with tab2:
-    c1, c2, c3 = st.columns(3)
-    c1.metric("CAPEX ($)", f"{int(capex):,}")
-    c2.metric("Daily Profit
+recos = [opt_ankur_full, opt_ankur
